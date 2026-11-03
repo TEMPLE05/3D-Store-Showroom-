@@ -2,7 +2,19 @@
 // Every function returns an SVG string; toDataUrl() turns it into an <img>/texture source.
 // The garment outlines are exported as point lists so the 3D garments use the exact same silhouette.
 
-export const toDataUrl = (svg) => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+// Give each SVG an explicit pixel size (2.4× its viewBox) so it rasterises sharply as a 3D texture.
+export const toDataUrl = (svg) => {
+  const sized = svg.replace(/<svg ([^>]*?)viewBox="([-\d.]+) ([-\d.]+) ([\d.]+) ([\d.]+)"/, (m, pre, x, y, w, h) =>
+    `<svg ${pre}width="${Math.round(w * 2.4)}" height="${Math.round(h * 2.4)}" viewBox="${x} ${y} ${w} ${h}"`);
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(sized)}`;
+};
+
+// The viewBox each garment's art is drawn in, so 3D shapes can map the art onto the outline exactly.
+export const OUTLINE_VIEW = {
+  tee: [0, 0, 400, 440],
+  hoodie: [0, -10, 400, 450],
+  trousers: [0, 0, 400, 440],
+};
 
 const shade = (hex, amt) => {
   const n = parseInt(hex.replace('#', ''), 16);

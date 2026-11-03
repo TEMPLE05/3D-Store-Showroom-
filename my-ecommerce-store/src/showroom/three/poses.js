@@ -13,7 +13,7 @@ export const POSES = {
     label: 'Hand on hip',
     joints: {
       hips: [0, 0, 0.05], spine: [0, 0, -0.06], chest: [0, 0.08, -0.03], head: [0.04, -0.12, 0.05],
-      lShoulder: [0.1, 0, 0.78], lElbow: [-1.85, 0.4, 0], lWrist: [0, 0, -0.3],
+      lShoulder: [0.18, -1.45, 0.62], lElbow: [-1.75, 0, 0], lWrist: [0.2, 0, 0],
       rShoulder: [0.05, 0, -0.12], rElbow: [-0.15, 0, 0],
       lHip: [0.02, 0, 0.02], rHip: [-0.18, 0, -0.12], rKnee: [0.3, 0, 0],
     },

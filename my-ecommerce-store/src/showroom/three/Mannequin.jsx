@@ -22,30 +22,50 @@ function limbGeometry(len, r1, r2, seg = 20) {
     }
     pts.push(new THREE.Vector2(Math.max(r, 0.0001), y));
   }
-  return new THREE.LatheGeometry(pts, seg);
+  // Lathe faces point outward only when the profile runs bottom → top.
+  return new THREE.LatheGeometry(pts.reverse(), seg);
 }
 
 const sphere = new THREE.SphereGeometry(1, 32, 24);
 
+// Smooth body section from a (radius, height) profile, revolved and later flattened front-to-back.
+function profileGeometry(profile, grow = 0, seg = 40) {
+  const pts = profile.map(([r, y]) => new THREE.Vector2(r > 0 ? r + grow : 0.0001, y));
+  return new THREE.LatheGeometry(pts, seg);
+}
+
+// Upper torso: from the waist (y=0 at the chest joint) to the base of the neck.
+const TORSO = [[0, -0.09], [0.118, -0.085], [0.124, -0.02], [0.138, 0.06], [0.158, 0.13], [0.168, 0.19], [0.162, 0.235], [0.135, 0.27], [0.085, 0.292], [0.045, 0.3], [0, 0.302]];
+// Pelvis: around the hip joint, a little below and above it.
+const PELVIS = [[0, -0.115], [0.07, -0.108], [0.128, -0.08], [0.152, -0.03], [0.15, 0.03], [0.132, 0.08], [0.12, 0.11], [0, 0.112]];
+
 function useGeometries() {
   return useMemo(() => ({
-    upperArm: limbGeometry(0.27, 0.047, 0.037),
-    forearm: limbGeometry(0.24, 0.036, 0.027),
-    thigh: limbGeometry(0.41, 0.078, 0.05),
-    shin: limbGeometry(0.4, 0.05, 0.032),
-    neck: limbGeometry(0.07, 0.044, 0.05),
-    abdomen: limbGeometry(0.2, 0.125, 0.118, 28),
-    upperArmSleeve: limbGeometry(0.27, 0.064, 0.05),
-    forearmSleeve: limbGeometry(0.22, 0.05, 0.043),
-    thighLeg: limbGeometry(0.41, 0.094, 0.068),
-    shinLeg: limbGeometry(0.39, 0.066, 0.06),
-    abdomenShell: limbGeometry(0.22, 0.142, 0.15, 28),
+    torso: profileGeometry(TORSO),
+    pelvis: profileGeometry(PELVIS),
+    abdomen: limbGeometry(0.2, 0.118, 0.12, 32),
+    upperArm: limbGeometry(0.27, 0.054, 0.041),
+    forearm: limbGeometry(0.24, 0.041, 0.03),
+    thigh: limbGeometry(0.41, 0.088, 0.056),
+    shin: limbGeometry(0.4, 0.056, 0.036),
+    neck: limbGeometry(0.07, 0.046, 0.054),
+    // clothing shells follow the same shapes, just a little larger
+    torsoShell: profileGeometry(TORSO.map(([r, y]) => [r, y === 0.302 ? 0.29 : y]), 0.018),
+    pelvisTopShell: profileGeometry([[0, 0.02], [0.17, 0.02], [0.165, 0.07], [0.148, 0.1], [0.138, 0.125], [0, 0.126]], 0),
+    pelvisShell: profileGeometry(PELVIS.slice(0, 7), 0.014),
+    abdomenShell: limbGeometry(0.2, 0.136, 0.15, 32),
+    upperArmSleeve: limbGeometry(0.27, 0.07, 0.056),
+    forearmSleeve: limbGeometry(0.2, 0.054, 0.046),
+    cuff: limbGeometry(0.035, 0.044, 0.044),
+    thighLeg: limbGeometry(0.41, 0.104, 0.074),
+    shinLeg: limbGeometry(0.38, 0.072, 0.066),
+    hood: profileGeometry([[0, -0.02], [0.12, 0.0], [0.15, 0.06], [0.14, 0.12], [0.1, 0.16], [0, 0.17]], 0, 32),
   }), []);
 }
 
 /* ---------- Materials ---------- */
 
-export function useMannequinMaterial() {
+function useMannequinMaterial() {
   return useMemo(() => new THREE.MeshPhysicalMaterial({
     color: '#0c0c0e', roughness: 0.32, metalness: 0.05, clearcoat: 1, clearcoatRoughness: 0.18, sheen: 0.2, sheenColor: '#3a3a44',
   }), []);
@@ -60,8 +80,9 @@ function fabric(hex, rough = 0.92) {
 
 /* ---------- Joint ---------- */
 
-const J = ({ name, joints, position, children }) => (
-  <group ref={(g) => { if (g) joints.current[name] = g; }} position={position}>{children}</group>
+// order 'XZY' on shoulders: twist along the arm first, then raise, then swing — so an elbow can bend toward the body.
+const J = ({ name, joints, position, order, children }) => (
+  <group ref={(g) => { if (g) { joints.current[name] = g; if (order) g.rotation.order = order; } }} position={position}>{children}</group>
 );
 
 const Part = ({ geometry, material, position, scale, rotation, onClick, cast = true }) => (
@@ -116,14 +137,18 @@ export default function Mannequin({ pose = 'standing', outfit = {}, onSelect, st
   const arm = (side) => {
     const s = side === 'l' ? 1 : -1;
     return (
-      <J name={`${side}Shoulder`} joints={joints} position={[0.205 * s, 0.215, -0.005]}>
-        <Part geometry={sphere} material={skin} scale={[0.058, 0.058, 0.058]} />
+      <J name={`${side}Shoulder`} joints={joints} position={[0.19 * s, 0.225, -0.005]} order="XZY">
+        <Part geometry={sphere} material={top ? topMat : skin} onClick={top ? tap('torso') : undefined}
+          position={[0.006 * s, 0.004, 0]} scale={top ? [0.08, 0.078, 0.078] : [0.066, 0.064, 0.064]} />
         <Part geometry={g.upperArm} material={skin} />
-        {top && <Part geometry={g.upperArmSleeve} material={topMat} onClick={tap('torso')} position={[0, 0.01, 0]} />}
+        {top && <Part geometry={g.upperArmSleeve} material={topMat} onClick={tap('torso')} position={[0, 0.012, 0]} />}
         <J name={`${side}Elbow`} joints={joints} position={[0, -0.285, 0]}>
-          <Part geometry={sphere} material={skin} scale={[0.037, 0.037, 0.037]} />
+          <Part geometry={sphere} material={skin} scale={[0.042, 0.042, 0.042]} />
           <Part geometry={g.forearm} material={skin} />
-          {hood && <Part geometry={g.forearmSleeve} material={topMat} onClick={tap('torso')} />}
+          {hood && <>
+            <Part geometry={g.forearmSleeve} material={topMat} onClick={tap('torso')} position={[0, 0.02, 0]} />
+            <Part geometry={g.cuff} material={topMat} onClick={tap('torso')} position={[0, -0.19, 0]} />
+          </>}
           <J name={`${side}Wrist`} joints={joints} position={[0, -0.255, 0]}>
             <Part geometry={sphere} material={skin} position={[0, -0.075, 0.004]} scale={[0.024, 0.085, 0.042]} />
             <Part geometry={sphere} material={skin} position={[0.0, -0.045, 0.034]} rotation={[0.5, 0, 0]} scale={[0.014, 0.04, 0.014]} />
@@ -162,22 +187,18 @@ export default function Mannequin({ pose = 'standing', outfit = {}, onSelect, st
   return (
     <group ref={root}>
       <J name="hips" joints={joints} position={[0, 0.985, 0]}>
-        <Part geometry={sphere} material={skin} scale={[0.165, 0.11, 0.11]} />
-        {legs && <Part geometry={sphere} material={legMat} onClick={tap('legs')} position={[0, 0.005, 0]} scale={[0.184, 0.125, 0.126]} />}
-        {top && <Part geometry={sphere} material={topMat} onClick={tap('torso')} position={[0, 0.05, 0]} scale={[0.19, 0.1, 0.135]} />}
+        <Part geometry={g.pelvis} material={skin} scale={[1.02, 1, 0.7]} />
+        {legs && <Part geometry={g.pelvisShell} material={legMat} onClick={tap('legs')} scale={[1.02, 1, 0.72]} />}
+        {top && <Part geometry={g.pelvisTopShell} material={topMat} onClick={tap('torso')} scale={[1.02, 1, 0.74]} />}
         <J name="spine" joints={joints} position={[0, 0.055, 0]}>
-          <Part geometry={g.abdomen} material={skin} rotation={[Math.PI, 0, 0]} scale={[1, 1, 0.72]} />
-          {top && <Part geometry={g.abdomenShell} material={topMat} onClick={tap('torso')} rotation={[Math.PI, 0, 0]} scale={[1, 1, 0.8]} />}
+          <Part geometry={g.abdomen} material={skin} rotation={[Math.PI, 0, 0]} scale={[1, 1, 0.66]} />
+          {top && <Part geometry={g.abdomenShell} material={topMat} onClick={tap('torso')} rotation={[Math.PI, 0, 0]} scale={[1, 1, 0.72]} />}
           <J name="chest" joints={joints} position={[0, 0.2, 0]}>
-            <Part geometry={sphere} material={skin} position={[0, 0.115, 0]} scale={[0.178, 0.168, 0.112]} />
-            <Part geometry={sphere} material={skin} position={[0, 0.2, -0.005]} scale={[0.215, 0.06, 0.09]} />
-            {top && <>
-              <Part geometry={sphere} material={topMat} onClick={tap('torso')} position={[0, 0.115, 0]} scale={[0.196, 0.186, 0.13]} />
-              <Part geometry={sphere} material={topMat} onClick={tap('torso')} position={[0, 0.198, -0.004]} scale={[0.238, 0.072, 0.108]} />
-            </>}
-            {hood && <Part geometry={sphere} material={topMat} onClick={tap('torso')} position={[0, 0.27, -0.1]} rotation={[0.5, 0, 0]} scale={[0.13, 0.1, 0.07]} />}
+            <Part geometry={g.torso} material={skin} scale={[1.08, 1, 0.62]} />
+            {top && <Part geometry={g.torsoShell} material={topMat} onClick={tap('torso')} scale={[1.08, 1, 0.66]} />}
+            {hood && <Part geometry={g.hood} material={topMat} onClick={tap('torso')} position={[0, 0.25, -0.085]} rotation={[-0.35, 0, 0]} scale={[0.95, 0.75, 0.55]} />}
             {hotspots?.torso}
-            <J name="neck" joints={joints} position={[0, 0.27, 0]}>
+            <J name="neck" joints={joints} position={[0, 0.285, 0]}>
               <Part geometry={g.neck} material={skin} rotation={[Math.PI, 0, 0]} />
               <J name="head" joints={joints} position={[0, 0.085, 0]}>
                 <Part geometry={sphere} material={skin} position={[0, 0.1, 0.008]} rotation={[0.12, 0, 0]} scale={[0.086, 0.114, 0.1]} />

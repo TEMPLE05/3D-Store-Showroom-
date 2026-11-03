@@ -35,7 +35,7 @@ const WEAR_SIZES = ['S', 'M', 'L', 'XL', 'XXL'];
 const seeded = (seed) => () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
 const stockFor = (sizes, seed) => {
   const r = seeded(seed);
-  return sizes.map((size) => ({ size, stock: r() < 0.22 ? 0 : 1 + Math.floor(r() * 6) }));
+  return sizes.map((size) => ({ size, stock: r() < 0.12 ? 0 : 1 + Math.floor(r() * 6) }));
 };
 
 let n = 0;
@@ -49,7 +49,7 @@ const COLOR = {
 
 function product({ type, name, brand, price, description, colors, bestseller = false, featured, display }) {
   const _id = id(type);
-  const sizeList = type === 'shoes' ? SHOE_SIZES : WEAR_SIZES;
+  const sizeList = type === 'shoes' ? SHOE_SIZES : type === 'caps' ? ['One size'] : WEAR_SIZES;
   const builtColors = colors.map((c, i) => ({
     ...c,
     sizes: stockFor(sizeList, _id.length * 97 + i * 31 + n * 13),

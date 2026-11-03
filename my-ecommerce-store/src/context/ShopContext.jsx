@@ -73,7 +73,7 @@ const ShopContextProvider = (props) => {
   const [search, setSearch] = useState("");
   const [showSearch, setShowSearch] = useState(false);
   const [cartItems, setCartItems] = useState({});
-  const [products, setProducts] = useState([]);
+  const [products, setProducts] = useState(DEMO_ENABLED ? DEMO_PRODUCTS : []);
   const [orders, setOrders] = useState([]);
   const [token, setToken] = useState(localStorage.getItem("token") || "");
   const navigate = useNavigate();
@@ -276,8 +276,6 @@ const ShopContextProvider = (props) => {
 
   // Load products and guest cart on mount
   useEffect(() => {
-    // Show demo stock immediately while the backend answers (avoids an empty first screen).
-    if (DEMO_ENABLED) setProducts(DEMO_PRODUCTS);
     getProductData();
 
     // Load guest cart if no token
