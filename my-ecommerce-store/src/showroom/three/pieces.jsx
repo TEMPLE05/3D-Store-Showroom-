@@ -3,6 +3,8 @@ import { useLoader } from '@react-three/fiber';
 import * as THREE from 'three';
 import { OUTLINES, OUTLINE_VIEW } from '../art';
 import { cardSize, garmentKind } from './pieceUtils';
+import Product3D from './Product3D';
+import { MODEL_TYPES } from './garmentBake';
 
 /* ---------- Textures ---------- */
 
@@ -90,9 +92,18 @@ export function Garment({ images, type, hex = '#777', onClick, scale = 1 }) {
   );
 }
 
-/** Shows either a 3D garment (clothing with a known outline) or a turning card (shoes, caps, photos). */
-export function ProductPiece({ product, color, onClick, width }) {
+/**
+ * A product in a 3D scene. Demo stock is shown as the real 3D garment; a boutique's own products
+ * (photos) show as a garment shape painted with the photo, or a turning card.
+ * Tops and trousers hang from y = 0 in 'rail' context; shoes and caps stand on y = 0 in 'shelf' context.
+ */
+export function ProductPiece({ product, color, onClick, width, context = 'rail' }) {
   const c = color || product.colors[0];
+  if (product.demo && MODEL_TYPES.has(product.productType)) {
+    const t = product.productType;
+    const scale = context === 'shelf' ? (t === 'shoes' ? 2.75 : t === 'caps' ? 2.6 : 1) : 1;
+    return <Product3D type={t} color={c} onClick={onClick} scale={scale} shadows />;
+  }
   const images = c.images?.length ? c.images : product.image;
   if (!product.photoOnly && garmentKind(product.productType)) {
     return <Garment images={images} type={product.productType} hex={c.hex} onClick={onClick} scale={width ? width / 0.9 : 1} />;

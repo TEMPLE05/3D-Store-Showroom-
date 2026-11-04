@@ -2,7 +2,11 @@
 // Used whenever the backend is unreachable or has no products, so the showroom always has stock to show.
 // All brands here are invented. Replace with a boutique's real stock through the admin panel.
 
-import { toDataUrl, sneakerSvg, teeSvg, hoodieSvg, capSvg, trousersSvg, brandMarkSvg } from './art';
+import { toDataUrl, brandMarkSvg } from './art';
+
+// Product photos for the demo stock are renders of the 3D garments (tools/render-thumbnails.cjs).
+const colorSlug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+const demoImage = (id, color) => `/demo/products/${id}-${colorSlug(color)}.webp`;
 
 export const STORE = {
   name: import.meta.env.VITE_STORE_NAME || 'ASO Studio',
@@ -52,6 +56,7 @@ function product({ type, name, brand, price, description, colors, bestseller = f
   const sizeList = type === 'shoes' ? SHOE_SIZES : type === 'caps' ? ['One size'] : WEAR_SIZES;
   const builtColors = colors.map((c, i) => ({
     ...c,
+    images: [demoImage(_id, c.name)],
     sizes: stockFor(sizeList, _id.length * 97 + i * 31 + n * 13),
   }));
   return {
@@ -81,13 +86,7 @@ const shoe = (brand, name, shape, price, variants, extra = {}) =>
     description: `${name} by ${brand}. Cushioned midsole, breathable upper and a grippy rubber outsole for all-day wear around town.`,
     colors: variants.map(([colorKey, accent, sole]) => {
       const [cname, hex] = COLOR[colorKey];
-      return {
-        name: cname, hex, accent, sole,
-        images: [
-          toDataUrl(sneakerSvg({ upper: hex, accent, sole, shape, brand })),
-          toDataUrl(sneakerSvg({ upper: hex, accent, sole, shape, brand, mirror: true })),
-        ],
-      };
+      return { name: cname, hex, accent, sole, shape };
     }),
   });
 
@@ -108,41 +107,41 @@ const shoes = [
 ];
 
 /* ---------- Clothing ---------- */
-const wear = (type, name, price, keys, art, extra = {}) =>
+const wear = (type, name, price, keys, extra = {}) =>
   product({
     type, brand: 'ASO', name, price, ...extra,
     description: extra.description || `${name}. Heavyweight cotton, relaxed fit, made for Abuja heat and cool harmattan evenings.`,
     colors: keys.map((k) => {
       const [cname, hex] = COLOR[k];
-      return { name: cname, hex, images: [toDataUrl(art(hex, false)), toDataUrl(art(hex, true))] };
+      return { name: cname, hex };
     }),
   });
 
 const hoodies = [
-  wear('hoodies', 'Core Hoodie', 38000, ['black', 'sand', 'grey', 'olive'], (c, back) => hoodieSvg({ color: c, brand: 'ASO', back }), { bestseller: true, featured: 'torso' }),
-  wear('hoodies', 'Harmattan Heavy Hoodie', 45000, ['cream', 'brown', 'black'], (c, back) => hoodieSvg({ color: c, brand: 'ASO', back })),
-  wear('hoodies', 'Studio Zip Hoodie', 42000, ['navy', 'green', 'grey'], (c, back) => hoodieSvg({ color: c, brand: '', back })),
-  wear('hoodies', 'Logo Hoodie', 36000, ['red', 'black', 'white'], (c, back) => hoodieSvg({ color: c, brand: 'ASO', back })),
+  wear('hoodies', 'Core Hoodie', 38000, ['sand', 'black', 'grey', 'olive'], { bestseller: true, featured: 'torso' }),
+  wear('hoodies', 'Harmattan Heavy Hoodie', 45000, ['cream', 'brown', 'black']),
+  wear('hoodies', 'Studio Zip Hoodie', 42000, ['navy', 'green', 'grey']),
+  wear('hoodies', 'Logo Hoodie', 36000, ['red', 'black', 'white']),
 ];
 
 const tees = [
-  wear('tees', 'Everyday Tee', 12000, ['white', 'black', 'grey', 'sand'], (c, back) => teeSvg({ color: c, brand: 'ASO', back }), { bestseller: true }),
-  wear('tees', 'Big Logo Tee', 15000, ['black', 'cream', 'red'], (c, back) => teeSvg({ color: c, brand: 'ASO', back, print: 'big' }), { bestseller: true }),
-  wear('tees', 'Stripe Tee', 14000, ['navy', 'white', 'olive'], (c, back) => teeSvg({ color: c, brand: 'ASO', back, print: 'stripe' })),
-  wear('tees', 'Heavy Box Tee', 18000, ['brown', 'black', 'cream'], (c, back) => teeSvg({ color: c, brand: 'ASO', back })),
+  wear('tees', 'Everyday Tee', 12000, ['white', 'black', 'grey', 'sand'], { bestseller: true }),
+  wear('tees', 'Big Logo Tee', 15000, ['black', 'cream', 'red'], { bestseller: true }),
+  wear('tees', 'Stripe Tee', 14000, ['navy', 'white', 'olive']),
+  wear('tees', 'Heavy Box Tee', 18000, ['brown', 'black', 'cream']),
 ];
 
 const trousers = [
-  wear('trousers', 'Cargo Trousers', 28000, ['olive', 'black', 'sand'], (c, back) => trousersSvg({ color: c, back }), { featured: 'legs', bestseller: true }),
-  wear('trousers', 'Wide Leg Chinos', 24000, ['cream', 'brown', 'navy'], (c, back) => trousersSvg({ color: c, back })),
-  wear('trousers', 'Utility Joggers', 21000, ['grey', 'black', 'green'], (c, back) => trousersSvg({ color: c, back })),
+  wear('trousers', 'Cargo Trousers', 28000, ['olive', 'black', 'sand'], { featured: 'legs', bestseller: true }),
+  wear('trousers', 'Wide Leg Chinos', 24000, ['cream', 'brown', 'navy']),
+  wear('trousers', 'Utility Joggers', 21000, ['grey', 'black', 'green']),
 ];
 
 const caps = [
-  wear('caps', 'Logo Cap', 9000, ['black', 'cream', 'navy'], (c, back) => capSvg({ color: c, brand: 'ASO', back }), { featured: 'head' }),
-  wear('caps', 'Washed Dad Cap', 8000, ['sand', 'olive', 'brown'], (c, back) => capSvg({ color: c, brand: '', back })),
-  wear('caps', 'Team Cap', 11000, ['red', 'green', 'blue'], (c, back) => capSvg({ color: c, brand: 'ASO', back })),
-  wear('caps', 'Studio Cap', 10000, ['white', 'black'], (c, back) => capSvg({ color: c, brand: 'ASO', back })),
+  wear('caps', 'Logo Cap', 9000, ['cream', 'black', 'navy'], { featured: 'head' }),
+  wear('caps', 'Washed Dad Cap', 8000, ['sand', 'olive', 'brown']),
+  wear('caps', 'Team Cap', 11000, ['red', 'green', 'blue']),
+  wear('caps', 'Studio Cap', 10000, ['white', 'black']),
 ];
 
 export const DEMO_PRODUCTS = [...shoes, ...hoodies, ...tees, ...trousers, ...caps];

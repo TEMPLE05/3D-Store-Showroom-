@@ -4,7 +4,7 @@ import { ArrowRight, Hand } from 'lucide-react';
 import { ShopContext } from '../../context/ShopContext';
 import { useShowroom, useShowroomUI } from '../useShowroom';
 import { STORE } from '../catalog';
-import { POSES, POSE_KEYS } from '../three/poses';
+import { POSES, POSE_KEYS } from '../three/posing';
 import { formatPrice } from '../catalogUtils';
 import ProductCard from '../components/ProductCard';
 
@@ -22,6 +22,9 @@ export default function ShowroomHome() {
   const [pose, setPose] = useState(POSES[STORE.featuredPose] ? STORE.featuredPose : 'standing');
 
   const look = ['head', 'torso', 'legs', 'feet'].map((k) => outfit[k]).filter(Boolean);
+  // what hangs in the lockers behind the mannequin; bay 4 (centre) stays empty behind the figure
+  const pick = (type, n = 0, c = 0) => { const p = (byType[type] || [])[n]; if (!p) return null; const color = p.colors[c] || p.colors[0]; return { type, color }; };
+  const bays = [pick('shoes', 4), pick('trousers', 1), pick('tees', 0), pick('hoodies', 1), null, pick('hoodies', 3), pick('caps', 0, 1), pick('trousers', 2), pick('tees', 1, 1)];
   const lookTotal = look.reduce((s, i) => s + i.price, 0);
   const best = products.filter((p) => p.bestseller).slice(0, 10);
 
@@ -30,7 +33,7 @@ export default function ShowroomHome() {
       {/* Hero: the mannequin under its spotlight */}
       <section className="relative w-full overflow-hidden" style={{ height: 'clamp(540px, 84svh, 820px)' }}>
         <Suspense fallback={<div className="absolute inset-0 bg-[radial-gradient(60%_50%_at_50%_30%,rgba(242,201,131,.12),transparent)]" />}>
-          <HeroStage pose={pose} outfit={outfit} onSelect={openProduct} />
+          <HeroStage pose={pose} outfit={outfit} onSelect={openProduct} bays={bays} />
         </Suspense>
         <div className="pointer-events-none absolute inset-x-0 top-0 sr-gutter" style={{ paddingTop: 'calc(4.5rem + env(safe-area-inset-top, 0px))' }}>
           <p className="sr-eyebrow">Week {weekNo()} · The look</p>
